@@ -1,0 +1,31 @@
+name: Build Oneplus SM8150 Kernel
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  Build-Kernel:
+    strategy:
+      fail-fast: false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+    - name: Build Kernel
+      uses: dabao1955/kernel_build_action@main
+      with:
+          kernel-url: https://github.com/kp7742/kernel_oneplus_sm8150
+          kernel-dir: msm-4.14
+          branch: fourteen
+          config: sm8150-perf_defconfig
+          arch: arm64
+          aosp-clang: true
+          android-version: 14
+          aosp-clang-version: r487747c
+          ksu: true
+          ksu-version: main
+          ccache: true
+          python-27: true
+          disable-lto: true
+          anykernel3: true
