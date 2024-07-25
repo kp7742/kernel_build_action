@@ -1,0 +1,27 @@
+name: Build Oneplus SM8250 Kernel
+on:
+  workflow_dispatch:
+
+jobs:
+  Build-Kernel:
+    strategy:
+      fail-fast: false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+    - name: Build Kernel
+      uses: kp7742/kernel_build_action@main
+      with:
+          kernel-url: https://github.com/Rohail33/Realking_kernel_sm8250
+          kernel-dir: kernel
+          kernel-branch: opkona
+          config: vendor/kona-perf_defconfig
+          arch: arm64
+          android-version: 13
+          other-clang-url: https://github.com/ZyCromerZ/Clang/releases/download/19.0.0git-20240716-release/Clang-19.0.0git-20240716.tar.gz
+          ksu: true
+          ccache: true
+          python-27: true
+          anykernel3: true
