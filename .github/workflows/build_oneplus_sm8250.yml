@@ -14,15 +14,16 @@ jobs:
     - name: Build Kernel
       uses: kp7742/kernel_build_action@main
       with:
-          kernel-url: https://github.com/Rohail33/Realking_kernel_sm8250
-          kernel-dir: kernel
-          kernel-branch: opkona
-          config: vendor/kona-perf_defconfig
+          kernel-url: https://github.com/engstk/op8
+          kernel-dir: msm-4.19
+          kernel-branch: blu_spark-14-custom
+          config: blu_spark_defconfig
           arch: arm64
           android-version: 13
           aosp-clang: true
           aosp-clang-version: r450784d
           ksu: true
+          ksu-version: v0.9.5
           ccache: true
           python-27: true
           anykernel3: true
