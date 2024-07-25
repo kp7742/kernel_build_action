@@ -21,7 +21,7 @@ jobs:
           arch: arm64
           android-version: 13
           aosp-clang: true
-          aosp-clang-version: r530567
+          aosp-clang-version: r450784d
           ksu: true
           ccache: true
           python-27: true
