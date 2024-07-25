@@ -41,7 +41,7 @@ jobs:
         uses: dabao1955/kernel_build_action@main
         with:
           kernel-url: https://github.com/AcmeUI-Devices/android_kernel_xiaomi_cas
-          branch: taffy
+          kernel-branch: taffy
           config: cas_defconfig
           arch: arm64
           aosp-gcc: true
@@ -64,16 +64,16 @@ Or use the [preset workflow file](https://github.com/dabao1955/kernel_build_acti
 | kernel-url | true | URL of Android kernel source code for your phone | https://github.com/username/project |
 | kernel-dir | false | The directory name of the Android kernel source code. This option may be used for OPLUS Kernel source code. | kernel |
 | depth | false | | 1 |
-| vendor | false | Enable additional source code for the Android kernel source code. This option may be used for OPLUS source code. | false |
-| vendor-url | false | | https://github.com/username/project|
+| vendor-url | false | url of additional source code for the Android kernel source code. This option may be used for OPLUS source code. | https://github.com/username/project|
 | vendor-dir | false | | vendor |
-| branch | true | The branch of the source code that needs to be cloned, defaults branch to git clone is main | main |
+| kernel-branch | true | The branch of the source code that needs to be cloned, defaults branch to git clone is main | main |
+| vendor-branch | true | The branch of the vendor source code that needs to be cloned, defaults branch to git clone is main | main |
 | config | true | Compile the selected configuration file for the Android kernel | defconfig |
 | arch | true | The architecture of your mobile phone SOC is arm64 by default | arm64 |
 | android-version | true | The Android version required when downloading aosp-clang. If you want to use the latest aosp-clang or you do not use aosp-clang to compile the kernel, please ignore this option | 12 |
-| apatch | false | Enable APatch | true |
 | ksu | false | Enable KernelSU | true |
 | ksu-version | false | KernelSU version | v0.6.6 |
+| ksu-lkm(may not build successfully for non-GKI devices) | false | Build KernelSU as a linux kernel module | true |
 | disable-lto | false | | false |
 | lxc | false | Enable LXC and docker to config | false |
 | lxc-patch | false | Add patch avoid not booting after enable lxc | false |
@@ -97,16 +97,18 @@ Or use the [preset workflow file](https://github.com/dabao1955/kernel_build_acti
 | extra-cmd | false | Compile the kernel with extra options, such as LD=ld.lld | AS=llvm-as |
 
 ## Todo
-- Improve testing process
-
-- Modify unreasonable options
-
 - Support use 3rd party gcc to compile
 
 ## FAQ
 
 ### How to use 3rd clang？
 You should disable aosp-clang and android-ndk options to use it.
+
+### Why KernelSU version built with this action is still v0.9.5？
+See [KernelSU 's release note](https://github.com/tiann/KernelSU/releases/tag/v1.0.0) for more details.
+
+### How to submit issue about features requests?
+In principle, it only accept Bug Reports and do not accept external Feature Requests; if you want new features, you are welcome to submit a Pull Request. It will still develop new features that we think are useful.
 
 ## Credits
 - [KernelSU](https://github.com/tiann/KernelSU)

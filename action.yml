@@ -18,14 +18,14 @@ inputs:
   kernel-dir:
     required: false
     default: kernel
-  vendor:
-    required: false
-    default: false
   vendor-dir:
     required: false
     default: vendor
-  branch:
+  kernel-branch:
     description: 'Branch name'
+    required: false
+    default: main
+  vendor-branch:
     required: false
     default: main
   config:
@@ -39,10 +39,6 @@ inputs:
     description: 'Android version.'
     required: true
     default: 12
-  apatch:
-    description: 'APatch function support'
-    required: false
-    default: false
   ksu:
     description: 'KernelSU function support'
     required: false
@@ -52,7 +48,7 @@ inputs:
     required: false
     default: "main"
   ksu-lkm:
-    description: "Build KernelSU as a linux kernel module"
+    description: "Build KernelSU as a loadable kernel module"
     required: false
     default: false
   disable-lto:
@@ -144,27 +140,22 @@ runs:
       if: inputs.ccache == 'true'
       uses: hendrikmuhs/ccache-action@v1.2
       with:
-        key: build-kernel-${{ inputs.arch }}${{ inputs.config }}
+        key: ${{ inputs.config }}-0cb68f9cbcbb3de9c966cf66ed51471fbe51419e
         max-size: 4G
 
     - name: Build Kernel
       shell: bash
       run: |
+         ########
          if [[ ${GITHUB_ACTIONS} != "true" || ${OSTYPE} != "linux-gnu" || ! -f /bin/apt || "$(id -u)" -eq 0 ]]; then
              printf "This Action Is Intended For non-root Ubuntu Runner.\n"
              exit 127
          fi
 
-         if [ ${GITHUB_ACTIONS} = "true" ]; then
-             echo "::group:: Cleaning up"
-             test -f /bin/docker && docker rmi -f $(docker images -q)
-             aria2c -q https://raw.githubusercontent.com/Homebrew/install/master/uninstall.sh && NONINTERACTIVE=1 bash ./uninstall.sh -f -q
-             echo "::endgroup::"
-         fi
-
          echo "::group:: Installing Building Depend Packages"
          sudo apt-get update
-         sudo apt-get install --no-install-recommends -y binutils binutils-aarch64-linux-gnu binutils-arm-linux-gnueabi git ccache automake flex lzop bison gperf build-essential zip curl zlib1g-dev g++-multilib libxml2-utils bzip2 libbz2-dev libbz2-1.0 libghc-bzlib-dev squashfs-tools pngcrush schedtool dpkg-dev liblz4-tool make optipng maven libssl-dev pwgen libswitch-perl policycoreutils minicom libxml-sax-base-perl libxml-simple-perl bc libc6-dev-i386 lib32ncurses5-dev libx11-dev lib32z-dev libgl1-mesa-dev xsltproc unzip device-tree-compiler python3 aria2
+         sudo apt-get install --no-install-recommends -y binutils binutils-aarch64-linux-gnu binutils-arm-linux-gnueabi git ccache automake flex lzop bison gperf build-essential zip curl zlib1g-dev g++-multilib libxml2-utils bzip2 libbz2-dev libbz2-1.0 libghc-bzlib-dev squashfs-tools pngcrush schedtool dpkg-dev liblz4-tool make optipng maven libssl-dev pwgen libswitch-perl policycoreutils minicom libxml-sax-base-perl libxml-simple-perl bc libc6-dev-i386 libx11-dev lib32z-dev libgl1-mesa-dev xsltproc unzip device-tree-compiler python3 aria2
+         aria2c -q https://raw.githubusercontent.com/Homebrew/install/master/uninstall.sh && NONINTERACTIVE=1 bash ./uninstall.sh -f -q
          echo "::endgroup::"
 
          if [ -f /bin/swapon ]; then
@@ -195,8 +186,8 @@ runs:
                  git clone https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/ --depth=1 -b android${{ inputs.android-version }}-release $HOME/gcc-64
                  git clone https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/ --depth=1 -b android${{ inputs.android-version }}-release $HOME/gcc-32
              fi
-         echo "::endgroup::"
          fi
+         echo "::endgroup::"
 
          if [ ${{ inputs.aosp-clang }} = false ] && [ ${{ inputs.android-ndk }} = false ]; then
              echo "::group:: Downloading 3rd clang"
@@ -244,7 +235,7 @@ runs:
          if [ ${{ inputs.python-27 }} = true ]; then
              echo "::group:: Installing Python2.7 instead Python3"
              if ! sudo apt-cache search python2.7 | grep -i python2.7 >>/dev/null; then
-                 echo "deb https://deb.debian.org/debian/ bullseye main contrib non-free" | sudo tee -a /etc/apt/sources.list >/dev/null
+                 echo "deb [trusted=yes] https://deb.debian.org/debian/ bullseye main contrib non-free" | sudo tee -a /etc/apt/sources.list >/dev/null
                  sudo apt-get update
              fi
              sudo apt-get install -y python2.7 python2.7-minimal
@@ -252,7 +243,7 @@ runs:
              test -f /bin/python || sudo ln -v -s /bin/python2.7 /bin/python
              test -f /bin/python2 || sudo ln -v -s /bin/python2.7 /bin/python2
              echo "::endgroup::"
-             grep -i "bullseye" /etc/apt/sources.list && sudo sed '$d' /etc/apt/sources.list >>/dev/null
+             grep -i "bullseye" /etc/apt/sources.list >>/dev/null && sudo sed '$d' /etc/apt/sources.list >>/dev/null
          fi
 
          if [ ${{ inputs.aosp-clang }} = true ]; then
@@ -273,12 +264,12 @@ runs:
          fi
 
          echo "::group:: Pulling Kernel Source"
-         git clone --recursive ${{ inputs.kernel-url }} -b "${{ inputs.branch }}" --depth=${{ inputs.depth }} kernel/${{ inputs.kernel-dir }}
+         git clone --recursive ${{ inputs.kernel-url }} -b "${{ inputs.kernel-branch }}" --depth=${{ inputs.depth }} kernel/${{ inputs.kernel-dir }}
          echo "::endgroup::"
 
-         if [ ${{ inputs.vendor }} = true ]; then
+         if [ ! -z  "${{ inputs.vendor-url }}" ]; then
              echo "::group:: Pulling Kernel vendor source"
-             git clone ${{ inputs.vendor-url }} --depth=${{ inputs.depth }} kernel/${{ inputs.vendor-dir }}
+             git clone ${{ inputs.vendor-url }} --depth=${{ inputs.depth }} kernel/${{ inputs.vendor-dir }} -b ${{ inputs.vendor-branch }}
              test -d kernel/${{ inputs.vendor-dir }}/vendor && cp -rv kernel/${{ inputs.vendor-dir }}/vendor kernel
              test -d kernel/${{ inputs.vendor-dir }}/vendor && cp -rv kernel/${{ inputs.vendor-dir }}/vendor ./
              echo "::endgroup::"
@@ -286,18 +277,34 @@ runs:
 
          cd kernel/${{ inputs.kernel-dir }}
          export SUBLEVEL=$(cat Makefile | grep "PATCHLEVEL =" | awk '{print $3}')
+         function version_gt() { test "$(echo -e "$1\n$2" | sort -V | tail -n1)" == "$1"; }
 
          if [ ${{ inputs.ksu }} = true ]; then
             echo "::group:: Initializing KernelSU"
             if [ -f KernelSU/kernel/Kconfig ]; then
                 echo "KernelSU has been initialized,skipped."
             else
-                curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s ${{ inputs.ksu-version }}
+                if [[ "${{ inputs.ksu-version }}" == "main" ]] || version_gt "${{ inputs.ksu-version }}" "v0.9.5"; then
+                    printf "Warning: The KernelSU version you selected was detected to be ${{ inputs.ksu-version }}, but KernelSU has dropped support for the non-gki kernel since 0.9.5. \n This will force switch to v0.9.5."
+                    export KVER=v0.9.5
+                else
+                    export KVER=${{ inputs.ksu-version }}
+                fi
+                    curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s "$KVER"
             fi
-            if grep -q "CONFIG_KPROBES=y" "arch/${{ inputs.arch }}/configs/${{ inputs.config }}" ; then
-                echo "CONFIG_KPROBES is enabled, skip patch."
+            if [ ${{ inputs.ksu-lkm }} = true ]; then
+                if grep -q "CONFIG_KPROBES=y" "arch/${{ inputs.arch }}/configs/${{ inputs.config }}" ; then
+                    sed -i 's/CONFIG_KSU=y/CONFIG_KSU=m/g' "arch/${{ inputs.arch }}/configs/${{ inputs.config }}"
+                else
+                    #echo "CONFIG_KSU=m" | tee -a arch/${{ inputs.arch }}/configs/${{ inputs.config }}
+                    sed -i '/config KSU/,/help/{s/default y/default m/}' common/drivers/kernelsu/Kconfig
+                fi
             else
-                curl -SsL https://github.com/dabao1955/kernel_build_action/raw/main/kernelsu/ksupatchs.sh | bash
+                if grep -q "CONFIG_KPROBES=y" "arch/${{ inputs.arch }}/configs/${{ inputs.config }}" ; then
+                    echo "CONFIG_KPROBES is enabled, skip patch."
+                else
+                    curl -SsL https://github.com/dabao1955/kernel_build_action/raw/main/kernelsu/ksupatchs.sh | bash
+                fi
             fi
             echo "::endgroup::"
          fi
@@ -319,18 +326,6 @@ runs:
                   echo "skip patch"
              fi
              echo "::endgroup::"
-         fi
-
-         if [ ${{ inputs.apatch }} = true ]; then
-             echo "::group:: Initializing Apatch"
-             mkdir drivers/apatch
-             aria2c https://github.com/dabao1955/kernel_build_action/raw/main/apatch/Kconfig -o drivers/apatch/Kconfig
-             grep -q "apatch" || sed -i "/endmenu/i\\source \"drivers/apatch/Kconfig\"" drivers/Kconfig
-             aria2c https://github.com/dabao1955/kernel_build_action/raw/main/apatch/module_fix.patch
-             git apply module_fix.patch
-             echo "CONFIG_APATCH_SUPPORT=y" | tee -a arch/${{ inputs.arch }}/configs/${{ inputs.config }} >/dev/null
-             echo "CONFIG_APATCH_FIX_MODULES=y" | tee -a arch/${{ inputs.arch }}/configs/${{ inputs.config }} >/dev/null
-             echo "CONFIG_APATCH_CUSTOMS=y" | tee -a arch/${{ inputs.arch }}/configs/${{ inputs.config }} >/dev/null
          fi
 
          if [ ${{ inputs.disable-lto }} = true ]; then
@@ -366,35 +361,35 @@ runs:
              echo "::endgroup::"
          fi
 
-         export A=$(date +%s)
          echo "::group:: Building Kernel with selected cross compiler"
          mkdir out -p -v
-         if [ ${{ inputs.android-ndk }} = true ]; then
-             export CLANG_PATH=$HOME/android-ndk-${{ inputs.android-ndk-version }}/toolchains/llvm/prebuilt/linux-x86_64
-             export PATH=$CLANG_PATH/bin:$PATH
+         COMMAND="make -j$(nproc --all) ${{ inputs.config }} ARCH=${{ inputs.arch }} all ${{ inputs.extra-cmd }} O=out"
+         if [ ${{ inputs.aosp-clang }} = true ] || [ ! -z ${{ inputs.other-clang-url}} ]; then
+              COMMAND+=" PATH=$HOME/clang/bin:$PATH"
+         elif [ ${{ inputs.android-ndk }} = true ]; then
+              COMMAND+=" CLANG_PATH=$HOME/android-ndk-${{ inputs.android-ndk-version }}/toolchains/llvm/prebuilt/linux-x86_64"
+         fi
+         export PATH=$CLANG_PATH/bin:$PATH
+         if [ ${{ inputs.aosp-gcc }} = true ]; then
+             COMMAND+=" CROSS_COMPILE=$HOME/gcc-64/bin/aarch64-linux-android- COMPILE_ARM32=$HOME/gcc-32/bin/arm-linux-androideabi- CLANG_TRIPLE=aarch64-linux-gnu-"
+         elif [ ${{ inputs.android-ndk }} = true ]; then
+             COMMAND+=" CROSS_COMPILE=$CLANG_PATH/bin/llvm- COMPILE_ARM32=$CLANG_PATH/bin/llvm-"
+         fi
+         if [ ${{ inputs.aosp-clang }} = true ] || [ ! -z ${{ inputs.other-clang-url}} ]; then
              if [ ${{ inputs.ccache }} = true ]; then
-                 export USE_CCACHE=1
-                 make -j$(nproc --all) CROSS_COMPILE=$CLANG_PATH/bin/llvm- COMPILE_ARM32=$CLANG_PATH/bin/llvm- CLANG_TRIPLE=aarch64-linux-android$(( ${{ inputs.android-version }} + 19 ))- CC="ccache clang" ARCH=${{ inputs.arch }} O=out ${{ inputs.extra-cmd }}
+                 COMMAND+=" CC='ccache clang'"
              else
-                 make -j$(nproc --all) CROSS_COMPILE=$CLANG_PATH/bin/llvm- COMPILE_ARM32=$CLANG_PATH/bin/llvm- CLANG_TRIPLE=aarch64-linux-android$(( ${{ inputs.android-version }} + 19 ))- CC=clang ARCH=${{ inputs.arch }} O=out ${{ inputs.extra-cmd }}
-             fi
-         elif [ ${{ inputs.android-ndk }} = false ] && [ ${{ inputs.aosp-gcc }} = true ]; then
-             export CLANG_PATH=$HOME/clang
-             export PATH=$CLANG_PATH/bin:$PATH
-             make -j$(nproc --all) CROSS_COMPILE=$HOME/gcc-64/bin/aarch64-linux-android- COMPILE_ARM32=$HOME/gcc-32/bin/arm-linux-androideabi- CLANG_TRIPLE=aarch64-linux-gnu- CC=clang ARCH=${{ inputs.arch }} O=out ${{ inputs.config }}
-             if [ ${{ inputs.ccache }} = true ]; then
-                 export USE_CCACHE=1
-                 make -j$(nproc --all) CROSS_COMPILE=$HOME/gcc-64/bin/aarch64-linux-android- COMPILE_ARM32=$HOME/gcc-32/bin/arm-linux-androideabi- CLANG_TRIPLE=aarch64-linux-gnu- CC="ccache clang" ARCH=${{ inputs.arch }} O=out ${{ inputs.extra-cmd }}
-             else
-                 make -j$(nproc --all) CROSS_COMPILE=$HOME/gcc-64/bin/aarch64-linux-android- COMPILE_ARM32=$HOME/gcc-32/bin/arm-linux-androideabi- CLANG_TRIPLE=aarch64-linux-gnu- CC=clang ARCH=${{ inputs.arch }} O=out ${{ inputs.extra-cmd }}
+                 COMMAND+=" CC=clang"
              fi
          else
-             make -j$(nproc --all) CROSS_COMPILE=$HOME/gcc-64/bin/aarch64-linux-android- COMPILE_ARM32=$HOME/gcc-32/bin/arm-linux-androideabi- ARCH=${{ inputs.arch }} O=out ${{ inputs.config }}
-             make -j$(nproc --all) CROSS_COMPILE=$HOME/gcc-64/bin/aarch64-linux-android- COMPILE_ARM32=$HOME/gcc-32/bin/arm-linux-androideabi- ARCH=${{ inputs.arch }} O=out ${{ inputs.extra-cmd }} 
+             if [ ${{ inputs.ccache }} = true ]; then
+                 COMMAND+=" CC='ccache $HOME/gcc-64/bin/aarch64-linux-android-gcc'"
+             fi
          fi
+         ${COMMAND}
          echo "::endgroup::"
 
-         unset USE_CCACHE CLANG_TRIPLE COMPILE_ARM32 CROSS_COMPILE CLANG_PATH HOMES SUBLEVEL
+         unset USE_CCACHE CLANG_TRIPLE COMPILE_ARM32 CROSS_COMPILE CLANG_PATH HOMES SUBLEVEL KVER COMMAND
 
          if [ ${{ inputs.anykernel3 }} = false ]; then
             echo "::group:: Preparing to Upload boot.img"
@@ -430,10 +425,10 @@ runs:
                 git clone ${{ inputs.anykernel3-url }} AnyKernel3
             else
                 git clone https://github.com/osm0sis/AnyKernel3
+                sed -i 's!BLOCK=/dev/block/platform/omap/omap_hsmmc.0/by-name/boot;!BLOCK=auto;!g' AnyKernel3/anykernel.sh
+                sed -i 's/do.devicecheck=1/do.devicecheck=0/g' AnyKernel3/anykernel.sh
+                sed -i 's/is_slot_device=0;/IS_SLOT_DEVICE=auto;/g' AnyKernel3/anykernel.sh
             fi
-            sed -i 's!block=/dev/block/platform/omap/omap_hsmmc.0/by-name/boot;!block=auto;!g' AnyKernel3/anykernel.sh
-            sed -i 's/do.devicecheck=1/do.devicecheck=0/g' AnyKernel3/anykernel.sh
-            sed -i 's/is_slot_device=0;/is_slot_device=auto;/g' AnyKernel3/anykernel.sh
 
             if [ -f out/arch/${{ inputs.arch }}/boot/Image.*-dtb ]; then
                 cp out/arch/${{ inputs.arch }}/boot/Image.*-dtb AnyKernel3/ -rv
@@ -449,8 +444,8 @@ runs:
             if [ ${{ inputs.release }} = false ]; then
                 cp AnyKernel3 ../../build -r -v
             else
-                zip Anykernel3-flasher.zip Anykernel3/*
-                mv Anykernel3-flasher.zip ../../build -rv
+                zip Anykernel3-flasher.zip AnyKernel3/*
+                mv Anykernel3-flasher.zip ../../build -v
             fi
             echo "::endgroup::"
          fi
@@ -475,13 +470,14 @@ runs:
 
     - id: release
       if: inputs.release == 'true'
-      uses: softprops/action-gh-release@v0.1.15
+      uses: softprops/action-gh-release@v2
       env:
         GITHUB_TOKEN: ${{ inputs.access-token }}
       with:
         name: Last CI build kernel
-        tag: last-ci
+        tag_name: last-ci
         files: build/*
+        make_latest: true
 
 posts:
   using: 'composite'
