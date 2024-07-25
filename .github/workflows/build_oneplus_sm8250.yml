@@ -20,7 +20,8 @@ jobs:
           config: vendor/kona-perf_defconfig
           arch: arm64
           android-version: 13
-          other-clang-url: https://github.com/ZyCromerZ/Clang/releases/download/19.0.0git-20240716-release/Clang-19.0.0git-20240716.tar.gz
+          aosp-clang: true
+          aosp-clang-version: r530567
           ksu: true
           ccache: true
           python-27: true
