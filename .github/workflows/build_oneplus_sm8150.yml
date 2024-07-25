@@ -13,7 +13,7 @@ jobs:
 
     steps:
     - name: Build Kernel
-      uses: dabao1955/kernel_build_action@main
+      uses: kp7742/kernel_build_action@main
       with:
           kernel-url: https://github.com/kp7742/kernel_oneplus_sm8150
           kernel-dir: msm-4.14
