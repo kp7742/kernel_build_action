@@ -14,13 +14,13 @@ jobs:
     - name: Build Kernel
       uses: kp7742/kernel_build_action@main
       with:
-          kernel-url: https://github.com/crdroidandroid/android_kernel_xiaomi_lavender
-          kernel-branch: "14.0"
+          kernel-url: https://github.com/ImSpiDy/kernel_xiaomi_lavender
+          kernel-branch: "14-Retro"
           config: lavender_defconfig
           arch: arm64
-          android-version: 14
+          android-version: 12
           aosp-clang: true
-          aosp-clang-version: r487747c
+          aosp-clang-version: r416183b1
           ksu: true
           ksu-version: v0.9.5
           ksu-lkm: false
