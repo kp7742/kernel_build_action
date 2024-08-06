@@ -23,7 +23,7 @@ jobs:
           aosp-clang: true
           aosp-clang-version: r450784d
           ksu: true
-          ksu-version: 0.9.5
+          ksu-version: v0.9.5
           ccache: true
           python-27: true
           anykernel3: true
