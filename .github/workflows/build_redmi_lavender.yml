@@ -1,0 +1,30 @@
+name: Build Redmi Note 7 Kernel
+on:
+  workflow_dispatch:
+
+jobs:
+  Build-Kernel:
+    strategy:
+      fail-fast: false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+    - name: Build Kernel
+      uses: kp7742/kernel_build_action@main
+      with:
+          kernel-url: https://github.com/crdroidandroid/android_kernel_xiaomi_lavender
+          kernel-branch: "14.0"
+          config: lavender_defconfig
+          arch: arm64
+          android-version: 14
+          aosp-gcc: true
+          aosp-clang: true
+          aosp-clang-version: r487747c
+          ksu: true
+          ksu-version: 0.9.5
+          ksu-lkm: false
+          ccache: true
+          python-27: false
+          anykernel3: true
