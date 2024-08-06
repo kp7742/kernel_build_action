@@ -19,12 +19,10 @@ jobs:
           config: lavender_defconfig
           arch: arm64
           android-version: 14
-          aosp-gcc: true
           aosp-clang: true
           aosp-clang-version: r487747c
           ksu: true
           ksu-version: v0.9.5
           ksu-lkm: false
-          ccache: true
-          python-27: false
+          python-27: true
           anykernel3: true
