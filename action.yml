@@ -386,6 +386,7 @@ runs:
                  COMMAND+=" CC='ccache $HOME/gcc-64/bin/aarch64-linux-android-gcc'"
              fi
          fi
+         echo "Command: ${COMMAND}"
          ${COMMAND}
          echo "::endgroup::"
 
