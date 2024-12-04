@@ -16,7 +16,7 @@ jobs:
       with:
           kernel-url: https://github.com/OnePlusOSS/android_kernel_oneplus_mt6893
           kernel-dir: kernel-4.19
-          kernel-branch: mt6893_t_13_nord_2_5g
+          kernel-branch: oneplus/mt6893_t_13_nord_2_5g
           config: gki_defconfig
           arch: arm64
           android-version: 13
