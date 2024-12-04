@@ -19,7 +19,9 @@ jobs:
           kernel-branch: tiramisu
           config: denniz_defconfig
           arch: arm64
+          android-version: 13
           ccache: true
-          aosp-gcc: true
+          aosp-clang: true
+          aosp-clang-version: r450784d
           python-27: true
           anykernel3: true
