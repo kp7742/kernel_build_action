@@ -26,6 +26,5 @@ jobs:
           ksu: true
           ksu-version: main
           ccache: true
-          python-27: true
           disable-lto: true
           anykernel3: true

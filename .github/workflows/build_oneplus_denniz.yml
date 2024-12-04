@@ -1,4 +1,4 @@
-name: Build Oneplus SM8250 Kernel
+name: Build OnePlus Nord2 5G Kernel
 on:
   workflow_dispatch:
 
@@ -14,14 +14,13 @@ jobs:
     - name: Build Kernel
       uses: kp7742/kernel_build_action@main
       with:
-          kernel-url: https://github.com/Rohail33/Realking_kernel_sm8250
-          kernel-dir: msm-4.19
-          kernel-branch: opkona
-          config: vendor/kona-perf_defconfig
+          kernel-url: https://github.com/nattolecats/kernel_oneplus_denniz
+          kernel-dir: kernel-4.14
+          kernel-branch: tiramisu
+          config: denniz_defconfig
           arch: arm64
           android-version: 13
+          ccache: true
           aosp-clang: true
           aosp-clang-version: r450784d
-          ksu: true
-          ksu-version: v0.9.5
           anykernel3: true

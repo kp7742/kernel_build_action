@@ -1,7 +1,7 @@
-const fs = require('fs');
-const yamlLint = require('yaml-lint');
+import * as fs from 'fs';
+import * as yamlLint from 'yaml-lint';
 
-function lintYAMLFile(filePath) {
+function lintYAMLFile(filePath: string): Promise<void> {
   const pendingMessage = `Checking ${filePath} ... [pending]`;
   process.stdout.write(pendingMessage);
 
@@ -25,8 +25,8 @@ function lintYAMLFile(filePath) {
   });
 }
 
-async function checkYAMLFilesSequentially() {
-  const files = [
+async function checkYAMLFilesSequentially(): Promise<void> {
+  const files: string[] = [
     '../action.yml',
     '../.github/workflows/check.yml',
     '../.github/workflows/build.yml',
@@ -38,7 +38,7 @@ async function checkYAMLFilesSequentially() {
 
   const checkStart = Date.now();
   console.log('Starting check...');
-  console.log('Android Kernel Build Action YAML Checker v0.0.2\n');
+  console.log('Android Kernel Build Action YAML Checker v0.0.3\n');
   for (const file of files) {
     try {
       await lintYAMLFile(file);
@@ -49,7 +49,7 @@ async function checkYAMLFilesSequentially() {
   }
 
   const totalDuration = Date.now() - checkStart;
-  console.log(`\nAll YAML files checked successful,Total duration: ${totalDuration}ms`);
+  console.log(`\nAll YAML files checked successfully, Total duration: ${totalDuration}ms`);
 }
 
 checkYAMLFilesSequentially();

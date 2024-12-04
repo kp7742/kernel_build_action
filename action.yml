@@ -12,6 +12,9 @@ inputs:
   depth:
     required: false
     default: 1
+  vendor:
+    required: false
+    default: false
   vendor-url:
     description: 'Kernel Vendor Source Url'
     required: false
@@ -38,7 +41,7 @@ inputs:
   android-version:
     description: 'Android version.'
     required: true
-    default: 12
+    default: ""
   ksu:
     description: 'KernelSU function support'
     required: false
@@ -47,6 +50,13 @@ inputs:
     description: 'KernelSU default branch'
     required: false
     default: "main"
+  ksu-other:
+    required: false
+    default: false
+  ksu-url:
+    description: "Use 3rd KernelSU"
+    required: false
+    default: ""
   ksu-lkm:
     description: "Build KernelSU as a loadable kernel module"
     required: false
@@ -147,61 +157,56 @@ runs:
       shell: bash
       run: |
          ########
-         if [[ ${GITHUB_ACTIONS} != "true" || ${OSTYPE} != "linux-gnu" || ! -f /bin/apt || "$(id -u)" -eq 0 ]]; then
-             printf "This Action Is Intended For non-root Ubuntu Runner.\n"
+         if [[ ${GITHUB_ACTIONS} != "true" || ${OSTYPE} != "linux-gnu" || ! -f /bin/apt ]]; then
+             printf "This Action Is Intended For Debian-based Runner.\n"
              exit 127
          fi
 
+         if [ "$(id -u)" -eq 0 ]; then
+             export SU=
+         else
+             export SU=sudo
+         fi
+         if [ -f /usr/bin/docker ]; then
+             echo "::group:: Cleaning necessary disk space"
+             echo "id: ${{ github.sha }}"
+             "$SU" docker image prune --all --force
+         fi
+         echo "::endgroup::"
+
          echo "::group:: Installing Building Depend Packages"
-         sudo apt-get update
-         sudo apt-get install --no-install-recommends -y binutils binutils-aarch64-linux-gnu binutils-arm-linux-gnueabi git ccache automake flex lzop bison gperf build-essential zip curl zlib1g-dev g++-multilib libxml2-utils bzip2 libbz2-dev libbz2-1.0 libghc-bzlib-dev squashfs-tools pngcrush schedtool dpkg-dev liblz4-tool make optipng maven libssl-dev pwgen libswitch-perl policycoreutils minicom libxml-sax-base-perl libxml-simple-perl bc libc6-dev-i386 libx11-dev lib32z-dev libgl1-mesa-dev xsltproc unzip device-tree-compiler python3 aria2
+         "$SU" apt-get update
+         "$SU" apt-get install --no-install-recommends -y binutils git make bc bison openssl curl zip kmod cpio flex libelf-dev libssl-dev libtfm-dev libc6-dev device-tree-compiler ca-certificates python3 xz-utils libc6-dev aria2 build-essential ccache
          aria2c -q https://raw.githubusercontent.com/Homebrew/install/master/uninstall.sh && NONINTERACTIVE=1 bash ./uninstall.sh -f -q
          echo "::endgroup::"
-
+         export SWAP_FILE=$(swapon --show=NAME | tail -n 1)
          if [ -f /bin/swapon ]; then
              echo "::group:: Setting Up Swap"
-             export SWAP_FILE=$(swapon --show=NAME | tail -n 1)
-             sudo swapoff $SWAP_FILE
-             sudo rm $SWAP_FILE
-             sudo fallocate -l 16G $SWAP_FILE
-             sudo chmod 600 $SWAP_FILE
-             sudo mkswap $SWAP_FILE
-             sudo swapon $SWAP_FILE
-             unset SWAP_FILE
+             "$SU" swapoff $SWAP_FILE
+             "$SU" rm $SWAP_FILE
+             "$SU" fallocate -l 16G $SWAP_FILE
+             "$SU" chmod 600 $SWAP_FILE
+             "$SU" mkswap $SWAP_FILE
+             "$SU" swapon $SWAP_FILE
              echo "::endgroup::"
          fi
-
-         if [ ${{ inputs.aosp-gcc }} = true ]; then
-             echo "::group:: Downloading AOSP GCC"
-             if [ ${{ inputs.aosp-clang }} = true ] || [ ${{ inputs.android.ndk }} = true ]; then
-                 mkdir -p -v $HOME/gcc-64
-                 aria2c -o gcc-aarch64.tar.gz https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/+archive/refs/tags/android-12.1.0_r27.tar.gz
-                 tar -C $HOME/gcc-64 -zxf gcc-aarch64.tar.gz
-                 mkdir -p -v $HOME/gcc-32
-                 aria2c -o gcc-arm.tar.gz https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/+archive/refs/tags/android-12.1.0_r27.tar.gz
-                 tar -C $HOME/gcc-32 -zxf gcc-arm.tar.gz
-             elif [ ${{ inputs.aosp-clang }} = true ] && [ ${{ inputs.android-ndk }} = true ]; then
-                 echo "Error: The two options aosp-clang and android-ndk will conflict with each other, please turn off one." && exit 15
-             else
-                 git clone https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/ --depth=1 -b android${{ inputs.android-version }}-release $HOME/gcc-64
-                 git clone https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/ --depth=1 -b android${{ inputs.android-version }}-release $HOME/gcc-32
-             fi
-         fi
-         echo "::endgroup::"
 
          if [ ${{ inputs.aosp-clang }} = false ] && [ ${{ inputs.android-ndk }} = false ]; then
              echo "::group:: Downloading 3rd clang"
              export OTHER_CLANG_URL=${{ inputs.other-clang-url }}
              if [[ "$OTHER_CLANG_URL" == *'.tar.gz' ]]; then
                  aria2c -o clang.tar.gz "$OTHER_CLANG_URL"
-                 mkdir clang
+                 mkdir $HOME/clang -p -v
                  tar -C $HOME/clang/ -zxvf clang.tar.gz
              elif [[ "$OTHER_CLANG_URL" == *'.zip' ]]; then
                  aria2c -o clang.zip "$OTHER_CLANG_URL"
-                 mkdir clang
+                 mkdir $HOME/clang -p -v
                  unzip clang.zip -d $HOME/clang/
              else
                  git clone "$OTHER_CLANG_URL" $HOME/clang --depth=${{ inputs.depth }} -b ${{ inputs.other-clang-branch }}
+             fi
+             if [ ! -d $HOME/clang/bin/ ]; then
+                 mv $HOME/clang/*/* $HOME/clang/
              fi
          fi
          echo "::endgroup::"
@@ -211,10 +216,10 @@ runs:
              if [ ${{ inputs.aosp-gcc }} = false ]; then
                  export NDKVER=$(echo "${{ inputs.android-ndk-version }}" | sed 's/r\([0-9]\+\)[a-zA-Z]\?/\1/g')
                  if [ "$NDKVER" -lt "23" ]; then
-                     aria2c -o android-ndk.zip https://dl.google.com/android/repository/android-ndk-${{ inputs.android-ndk-version }}-linux.zip
+                     aria2c -o android-ndk.zip https://dl.google.com/android/repository/android-ndk-${{ inputs.android-ndk-version }}-linux-x86_64.zip
                      unzip -d $HOME android-ndk.zip
                  else
-                     aria2c -o android-ndk.zip https://dl.google.com/android/repository/android-ndk-${{ inputs.android-ndk-version }}-linux-x86_64.zip
+                     aria2c -o android-ndk.zip https://dl.google.com/android/repository/android-ndk-${{ inputs.android-ndk-version }}-linux.zip
                      unzip -d $HOME android-ndk.zip
                  fi
              else
@@ -263,11 +268,29 @@ runs:
              echo "::endgroup::"
          fi
 
+         if [ ${{ inputs.aosp-gcc }} = true ]; then
+             echo "::group:: Downloading AOSP GCC"
+             if [ -d $HOME/clang ]; then
+                 mkdir -p -v $HOME/gcc-64
+                 aria2c -o gcc-aarch64.tar.gz https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/+archive/refs/tags/android-12.1.0_r27.tar.gz
+                 tar -C $HOME/gcc-64 -zxf gcc-aarch64.tar.gz
+                 mkdir -p -v $HOME/gcc-32
+                 aria2c -o gcc-arm.tar.gz https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/+archive/refs/tags/android-12.1.0_r27.tar.gz
+                 tar -C $HOME/gcc-32 -zxf gcc-arm.tar.gz
+             elif [ ${{ inputs.aosp-clang }} = true ] && [ ${{ inputs.android-ndk }} = true ]; then
+                 echo "Error: The two options aosp-clang and android-ndk will conflict with each other, please turn off one." && exit 15
+             else
+                 git clone https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/ --depth=1 -b android${{ inputs.android-version }}-release $HOME/gcc-64
+                 git clone https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/ --depth=1 -b android${{ inputs.android-version }}-release $HOME/gcc-32
+             fi
+         fi
+         echo "::endgroup::"
+
          echo "::group:: Pulling Kernel Source"
          git clone --recursive ${{ inputs.kernel-url }} -b "${{ inputs.kernel-branch }}" --depth=${{ inputs.depth }} kernel/${{ inputs.kernel-dir }}
          echo "::endgroup::"
 
-         if [ ! -z  "${{ inputs.vendor-url }}" ]; then
+         if [ "${{ inputs.vendor }}" = true ]; then
              echo "::group:: Pulling Kernel vendor source"
              git clone ${{ inputs.vendor-url }} --depth=${{ inputs.depth }} kernel/${{ inputs.vendor-dir }} -b ${{ inputs.vendor-branch }}
              test -d kernel/${{ inputs.vendor-dir }}/vendor && cp -rv kernel/${{ inputs.vendor-dir }}/vendor kernel
@@ -276,51 +299,70 @@ runs:
          fi
 
          cd kernel/${{ inputs.kernel-dir }}
-         export SUBLEVEL=$(cat Makefile | grep "PATCHLEVEL =" | awk '{print $3}')
          function version_gt() { test "$(echo -e "$1\n$2" | sort -V | tail -n1)" == "$1"; }
+         VERSION=$(grep -E '^VERSION = ' Makefile | awk '{print $3}')
+         PATCHLEVEL=$(grep -E '^PATCHLEVEL = ' Makefile | awk '{print $3}')
+         SUBLEVEL=$(grep -E '^SUBLEVEL = ' Makefile | awk '{print $3}')
+         if [ "$VERSION" -lt 5 ]; then
+             touch nongki.txt
+         elif [ "PATCHLEVEL" -lt 10 ]; then
+             touch nongki.txt
+         fi
 
          if [ ${{ inputs.ksu }} = true ]; then
             echo "::group:: Initializing KernelSU"
             if [ -f KernelSU/kernel/Kconfig ]; then
                 echo "KernelSU has been initialized,skipped."
             else
-                if [[ "${{ inputs.ksu-version }}" == "main" ]] || version_gt "${{ inputs.ksu-version }}" "v0.9.5"; then
-                    printf "Warning: The KernelSU version you selected was detected to be ${{ inputs.ksu-version }}, but KernelSU has dropped support for the non-gki kernel since 0.9.5. \n This will force switch to v0.9.5."
-                    export KVER=v0.9.5
+                if [ ${{ inputs.ksu-other }} = true ]; then
+                    curl -SsL "${{ inputs.ksu-url }}/raw/${{ inputs.ksu-version }}/kernel/setup.sh" | bash -s ${{ inputs.ksu-version }}
                 else
-                    export KVER=${{ inputs.ksu-version }}
+                    echo "Kernel version: $VERSION.$PATCHLEVEL.$SUBLEVEL"
+                    if [ -f nongki.txt ]; then
+                        printf "Warning: The KernelSU version you selected was detected to be ${{ inputs.ksu-version }}, but KernelSU has dropped support for the non-gki kernel since 0.9.5. \n This will force switch to v0.9.5.\n"
+                        export KVER=v0.9.5
+                    else
+                        export KVER=${{ inputs.ksu-version }}
+                    fi
+                        curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s "$KVER"
+                    fi
                 fi
-                    curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s "$KVER"
-            fi
-            if [ ${{ inputs.ksu-lkm }} = true ]; then
-                if grep -q "CONFIG_KPROBES=y" "arch/${{ inputs.arch }}/configs/${{ inputs.config }}" ; then
-                    sed -i 's/CONFIG_KSU=y/CONFIG_KSU=m/g' "arch/${{ inputs.arch }}/configs/${{ inputs.config }}"
-                else
+                if [ ${{ inputs.ksu-lkm }} = true ]; then
+                    if grep -q "CONFIG_KPROBES=y" "arch/${{ inputs.arch }}/configs/${{ inputs.config }}" ; then
+                        sed -i 's/CONFIG_KSU=y/CONFIG_KSU=m/g' "arch/${{ inputs.arch }}/configs/${{ inputs.config }}"
+                     else
                     #echo "CONFIG_KSU=m" | tee -a arch/${{ inputs.arch }}/configs/${{ inputs.config }}
-                    sed -i '/config KSU/,/help/{s/default y/default m/}' common/drivers/kernelsu/Kconfig
+                    sed -i '/config KSU/,/help/{s/default y/default m/}' drivers/kernelsu/Kconfig
                 fi
-            else
+            elif [ -f nongki.txt ]; then
                 if grep -q "CONFIG_KPROBES=y" "arch/${{ inputs.arch }}/configs/${{ inputs.config }}" ; then
                     echo "CONFIG_KPROBES is enabled, skip patch."
                 else
-                    curl -SsL https://github.com/kp7742/kernel_build_action/raw/main/kernelsu/ksupatch.sh | bash
+                    curl -SsL https://github.com/kp7742/kernel_build_action/raw/main/kernelsu/patch.sh | bash
                 fi
             fi
             echo "::endgroup::"
          fi
 
+         if [ -f scripts/dtc/libfdt/mkdtboimg.py ]; then
+            if grep python2 scripts/Makefile.lib >/dev/null; then
+                echo "::group:: Uning mkdtboimg Python3 version instead of Python2 version"
+                rm -rf -v scripts/dtc/libfdt/mkdtboimg.py && aria2c https://github.com/dabao1955/kernel_build_action/raw/main/mkdtboimg.py -o scripts/dtc/libfdt/mkdtboimg.py
+            elif grep scripts/ufdt && test ! -d scripts/ufdt >/dev/null; then
+                aria2c https://github.com/dabao1955/kernel_build_action/raw/main/mkdtboimg.py -o ufdt/libufdt/utils/src/mkdtboimg.py
+            fi
+            test -f /usr/bin/python2 || "$SU" ln -s -f -v /usr/bin/python3 /usr/bin/python2
+         fi
+         echo "::endgroup::"
+
          if [ ${{ inputs.nethunter }} = true ]; then
              echo "::group:: Initializing Kali nethunter"
-             aria2c https://github.com/Biohazardousrom/Kali-defconfig-checker/raw/master/check-kernel-config
-             bash check-kernel-config ${{ inputs.config }} -w
+             aria2c https://github.com/dabao1955/kernel_build_action/raw/main/nethunter/config.sh -o nconfig.sh &&  bash nconfig.sh arch/${{ inputs.arch }}/configs/${{ inputs.config }} -w
              if [ ${{ inputs.nethunter-patch }} = true ]; then
-                 aria2c https://github.com/tomxi1997/kali-nethunter_patches/raw/main/add-wifi-injection.patch
-                 git apply add-wifi-injection.patch
-                 aria2c https://github.com/tomxi1997/kali-nethunter_patches/raw/main/fix-ath9k-naming-conflict.patch
-                 git apply fix-ath9k-naming-conflict.patch
+                 aria2c https://github.com/dabao1955/kernel_build_action/raw/main/nethunter/add-wifi-injection.patch && git apply add-wifi-injection.patch
+                 aria2c apply https://github.com/dabao1955/kernel_build_action/raw/main/nethunter/fix-ath9k-naming-conflict.patch && git apply fix-ath9k-naming-confict.patch
                  if [ "$SUBLEVEL" -lt "19" ]; then
-                     aria2c https://github.com/tomxi1997/kali-nethunter_patches/raw/main/add-wifi-injection-4.14.patch
-                     git apply add-wifi-injection-4.14.patch
+                     aria2c https://github.com/dabao1955/kernel_build_action/raw/main/nethunter/add-wifi-injection-4.14.patch && git apply add-wifi-injection-4.14.patch
                  fi
              else
                   echo "skip patch"
@@ -347,16 +389,14 @@ runs:
 
          if [ ${{ inputs.lxc }} = true ]; then
              echo "::group:: Enabling LXC"
-             aria2c https://github.com/wu17481748/lxc-docker/raw/main/LXC-DOCKER-OPEN-CONFIG.sh
-             bash LXC-DOCKER-OPEN-CONFIG.sh ${{ inputs.config }} -w
-             grep -q "CONFIG_ANDROID_PARANOID_NETWORK" "arch/${{ inputs.arch }}/configs/${{ inputs.config }}" && sed -i 's/CONFIG_ANDROID_PARANOID_NETWORK=y/#CONFIG_ANDROID_PARANOID_NETWORK=y/' arch/${{ inputs.arch }}/configs/${{ inputs.config }}
+             aria2c https://github.com/dabao1955/kernel_build_action/raw/main/lxc/config.sh && bash config.sh arch/${{ inputs.arch }}/configs/${{ inputs.config }} -w
              if [ ${{ inputs.lxc-patch }} = true ]; then
-                 aria2c https://github.com/wu17481748/lxc-docker/raw/main/cgroup.patch
+                 aria2c https://github.com/dabao1955/kernel_build_action/raw/main/lxc/xt_qtaguid.patch
+                 aria2c https://github.com/dabao1955/kernel_build_action/raw/main/lxc/cgroup.patch
                  patch kernel/cgroup/cgroup.c < cgroup.patch
-                 aria2c https://github.com/wu17481748/lxc-docker/raw/main/xt_qtaguid.patch
                  patch net/netfilter/xt_qtaguid.c < xt_qtaguid.patch
              else
-                 echo skip lxc patch
+                 echo skip lxc patching
              fi
              echo "::endgroup::"
          fi
@@ -364,18 +404,18 @@ runs:
          echo "::group:: Building Kernel with selected cross compiler"
          mkdir out -p -v
          COMMAND="make -j$(nproc --all) ${{ inputs.config }} ARCH=${{ inputs.arch }} all ${{ inputs.extra-cmd }} O=out"
-         if [ ${{ inputs.aosp-clang }} = true ] || [ ! -z ${{ inputs.other-clang-url}} ]; then
+         if [ -d $HOME/clang ]; then
               COMMAND+=" PATH=$HOME/clang/bin:$PATH"
          elif [ ${{ inputs.android-ndk }} = true ]; then
+              export PATH=$CLANG_PATH/bin:$PATH
               COMMAND+=" CLANG_PATH=$HOME/android-ndk-${{ inputs.android-ndk-version }}/toolchains/llvm/prebuilt/linux-x86_64"
          fi
-         export PATH=$CLANG_PATH/bin:$PATH
          if [ ${{ inputs.aosp-gcc }} = true ]; then
-             COMMAND+=" CROSS_COMPILE=$HOME/gcc-64/bin/aarch64-linux-android- COMPILE_ARM32=$HOME/gcc-32/bin/arm-linux-androideabi- CLANG_TRIPLE=aarch64-linux-gnu-"
+             COMMAND+=" CROSS_COMPILE=$HOME/gcc-64/bin/aarch64-linux-android- CROSS_COMPILE_ARM32=$HOME/gcc-32/bin/arm-linux-androideabi- CLANG_TRIPLE=aarch64-linux-gnu-"
          elif [ ${{ inputs.android-ndk }} = true ]; then
-             COMMAND+=" CROSS_COMPILE=$CLANG_PATH/bin/llvm- COMPILE_ARM32=$CLANG_PATH/bin/llvm-"
+             COMMAND+=" CROSS_COMPILE=$CLANG_PATH/bin/llvm- CROSS_COMPILE_ARM32=$CLANG_PATH/bin/llvm-"
          fi
-         if [ ${{ inputs.aosp-clang }} = true ] || [ ! -z ${{ inputs.other-clang-url}} ]; then
+         if [ -d $HOME/clang ]; then
              if [ ${{ inputs.ccache }} = true ]; then
                  COMMAND+=" CC='ccache clang'"
              else
@@ -383,14 +423,18 @@ runs:
              fi
          else
              if [ ${{ inputs.ccache }} = true ]; then
-                 COMMAND+=" CC='ccache $HOME/gcc-64/bin/aarch64-linux-android-gcc'"
+                 if [ -d $HOME/gcc-64 ]; then
+                     COMMAND+=" CC='ccache $HOME/gcc-64/bin/aarch64-linux-android-gcc'"
+                 else
+                     COMMAND+=" CC='ccache $HOME/gcc-32/bin/arm-linux-androidabeihf-gcc'"
+                 fi
              fi
          fi
-         echo "Command: ${COMMAND}"
+         echo "using command: ${COMMAND}"
          ${COMMAND}
          echo "::endgroup::"
 
-         unset USE_CCACHE CLANG_TRIPLE COMPILE_ARM32 CROSS_COMPILE CLANG_PATH HOMES SUBLEVEL KVER COMMAND
+         unset USE_CCACHE CLANG_TRIPLE CROSS_COMPILE_ARM32 CROSS_COMPILE CLANG_PATH HOMES SUBLEVEL KVER COMMAND SWAP_FILE SUBLEVEL PATCHLEVEL VERSION
 
          if [ ${{ inputs.anykernel3 }} = false ]; then
             echo "::group:: Preparing to Upload boot.img"
@@ -476,13 +520,10 @@ runs:
         GITHUB_TOKEN: ${{ inputs.access-token }}
       with:
         name: Last CI build kernel
-        tag_name: last-ci
+        tag_name: last-ci-${{ github.sha }}
         files: build/*
         make_latest: true
-
-posts:
-  using: 'composite'
-  steps:
-    - name: post
-      shell: bash
-      run:  $HOME/clang/bin/clang --version
+        body: |
+            config: ${{ inputs.config }}
+            branch: ${{ inputs.kernel-branch }}
+            source: ${{ inputs.kernel-url }}

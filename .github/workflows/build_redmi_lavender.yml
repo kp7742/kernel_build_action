@@ -24,5 +24,4 @@ jobs:
           ksu: true
           ksu-version: v0.9.5
           ksu-lkm: false
-          python-27: true
           anykernel3: true
