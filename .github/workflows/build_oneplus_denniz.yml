@@ -14,14 +14,14 @@ jobs:
     - name: Build Kernel
       uses: kp7742/kernel_build_action@main
       with:
-          kernel-url: https://github.com/nattolecats/kernel_oneplus_denniz
-          kernel-dir: kernel-4.14
-          kernel-branch: tiramisu
-          config: denniz_defconfig
+          kernel-url: https://github.com/OnePlusOSS/android_kernel_oneplus_mt6893
+          kernel-dir: kernel-4.19
+          kernel-branch: mt6893_t_13_nord_2_5g
+          config: gki_defconfig
           arch: arm64
           android-version: 13
           ccache: true
           aosp-clang: true
           aosp-clang-version: r450784d
-          python-27: true
+          extra-cmd: LLVM=1 LLVM_IAS=1
           anykernel3: true
