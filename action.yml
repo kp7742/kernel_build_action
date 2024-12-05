@@ -126,6 +126,10 @@ inputs:
     description: '3rdparty anykernrl3 url path'
     required: false
     default: ""
+  bootimg-raw:
+    description: "boot.img pack raw Image"
+    required: false
+    default: false
   bootimg-url:
     description: "boot.img path"
     required: false
@@ -446,16 +450,28 @@ runs:
                 i*86 | x86 | amd64 | x86_64) aria2c https://github.com/Shubhamvis98/AIK/raw/4ac321dfd48e16344e6146c505708aa720ff0bb3/bin/magiskboot_x86 -o magiskboot && chmod 755 magiskboot  ;;
                 *) echo "Unknow cpu architecture for this device !" && exit 1 ;;
             esac
-            aria2c ${{ inputs.bootimg-url }} -o boot.img
-            nohup ./magiskboot unpack boot.img
-            export FMT=$(cat nohup.out | grep "KERNEL_FMT" | awk '{gsub("\\[", "", $2); gsub("\\]", "", $2); print $2}')
-            if [ "$FMT" = "raw" ] ; then
-                cp -v ../out/arch/${{ inputs.arch }}/boot/Image kernel
-            else
-                if ls dtb >/dev/null ; then
-                    cp -v ../out/arch/${{ inputs.arch }}/boot/Image.*-dtb kernel
+            if [ ! -z ${{ inputs.bootimg-url }} ]; then
+                aria2c ${{ inputs.bootimg-url }} -o boot.img
+                nohup ./magiskboot unpack boot.img
+                export FMT=$(cat nohup.out | grep "KERNEL_FMT" | awk '{gsub("\\[", "", $2); gsub("\\]", "", $2); print $2}')
+                if [ "$FMT" = "raw" ] ; then
+                    cp -v ../out/arch/${{ inputs.arch }}/boot/Image kernel
                 else
-                    cp -v ../out/arch/${{ inputs.arch }}/boot/Image.* kernel
+                    if ls dtb >/dev/null ; then
+                        cp -v ../out/arch/${{ inputs.arch }}/boot/Image.*-dtb kernel
+                    else
+                        cp -v ../out/arch/${{ inputs.arch }}/boot/Image.* kernel
+                    fi
+                fi
+            else
+                if [ ${{ inputs.bootimg-raw }} = true ] ; then
+                    cp -v ../out/arch/${{ inputs.arch }}/boot/Image kernel
+                else
+                    if ls dtb >/dev/null ; then
+                        cp -v ../out/arch/${{ inputs.arch }}/boot/Image.*-dtb kernel
+                    else
+                        cp -v ../out/arch/${{ inputs.arch }}/boot/Image.* kernel
+                    fi
                 fi
             fi
             ./magiskboot repack boot.img
