@@ -14,16 +14,19 @@ jobs:
     - name: Build Kernel
       uses: kp7742/kernel_build_action@main
       with:
-          kernel-url: https://github.com/kp7742/kernel_oneplus_denniz
-          kernel-dir: kernel-4.14
-          kernel-branch: tiramisu
-          config: denniz_defconfig
+          kernel-url: https://github.com/OnePlusOSS/android_kernel_oneplus_mt6893
+          kernel-dir: kernel
+          kernel-branch: oneplus/mt6893_t_13_nord_2_5g
+          vendor: true
+          vendor-url: https://github.com/OnePlusOSS/android_vendor_mediatek_kernel_modules_mt6893
+          vendor-branch: oneplus/mt6893_t_13_nord_2_5g
+          config: gki_defconfig
           arch: arm64
           android-version: 13
           ccache: false
           aosp-clang: false
           aosp-gcc: false
-          other-clang-url: https://github.com/kdrag0n/proton-clang
-          other-clang-branch: master
-          extra-cmd: SUBARCH=arm64 CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi-
+          other-clang-url: https://gitlab.com/LeCmnGend/clang.git
+          other-clang-branch: clang-15
+          extra-cmd: CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu-
           anykernel3: true
