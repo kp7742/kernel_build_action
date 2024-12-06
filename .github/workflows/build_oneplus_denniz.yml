@@ -14,18 +14,16 @@ jobs:
     - name: Build Kernel
       uses: kp7742/kernel_build_action@main
       with:
-          kernel-url: https://github.com/OnePlusOSS/android_kernel_oneplus_mt6893
-          kernel-dir: kernel-4.19
-          kernel-branch: oneplus/mt6893_t_13_nord_2_5g
-          vendor: true
-          vendor-url: https://github.com/OnePlusOSS/android_vendor_mediatek_kernel_modules_mt6893
-          vendor-branch: oneplus/mt6893_t_13_nord_2_5g
-          config: gki_defconfig
-          arch: arm64
-          ccache: true
-          aosp-gcc: true
-          aosp-clang: true
-          android-version: 13
-          aosp-clang-version: r450784d
-          extra-cmd: CROSS_COMPILE=aarch64-linux-gnu- LLVM=1 LLVM_IAS=1 LD=ld.lld AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump READELF=llvm-readelf OBJSIZE=llvm-size STRIP=llvm-strip
-          anykernel3: true
+        kernel-url: https://github.com/kp7742/kernel_oneplus_denniz
+        kernel-dir: kernel-4.14
+        kernel-branch: tiramisu
+        config: denniz_defconfig
+        arch: arm64
+        android-version: 13
+        ccache: true
+        aosp-gcc: false
+        aosp-clang: false
+        other-clang-url: https://gitlab.com/LeCmnGend/clang.git
+        other-clang-branch: clang-15
+        extra-cmd: CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- LLVM=1 LLVM_IAS=1 LD=ld.lld AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip
+        anykernel3: true
