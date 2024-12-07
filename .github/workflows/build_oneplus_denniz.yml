@@ -23,7 +23,7 @@ jobs:
         ccache: false
         aosp-gcc: false
         aosp-clang: false
-        other-clang-url: https://github.com/kdrag0n/proton-clang.git
-        other-clang-branch: master
-        extra-cmd: SUBARCH=arm64 CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi-
+        other-clang-url: https://gitlab.gnome.org/dakkshesh07/neutron-clang.git
+        other-clang-branch: Neutron-16
+        extra-cmd: CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi-
         anykernel3: true
