@@ -19,11 +19,10 @@ jobs:
         kernel-branch: 13.x
         config: denniz_defconfig
         arch: arm64
-        android-version: 13
+        android-version: 12
         ccache: false
-        aosp-gcc: false
-        aosp-clang: false
-        other-clang-url: https://gitlab.gnome.org/dakkshesh07/neutron-clang.git
-        other-clang-branch: Neutron-16
+        aosp-gcc: true
+        aosp-clang: true
+        aosp-clang-version: r383902
         extra-cmd: CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi-
         anykernel3: true
